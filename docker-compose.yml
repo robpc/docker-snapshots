@@ -1,0 +1,9 @@
+version: '2'
+services:
+  test:
+    build: .
+    environment:
+      SNAPSHOT_METHOD: local
+      SNAPSHOT_LOCATION: /s3
+      SNAPSHOT_S3_DESTINATION: /root
+      SNAPSHOT_INTERVAL: 15
