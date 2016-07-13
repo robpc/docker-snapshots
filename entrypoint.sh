@@ -27,6 +27,10 @@ NUM_TO_KEEP=$((SNAPSHOT_MAX_NUM+1))
 
 BACKUP_DIR=/backups
 
+log() {
+    echo "DEBUG:" $@ >&2
+}
+
 local_cp() {
   cp $@
 }
@@ -47,8 +51,6 @@ else
   exit
 fi
 
-cd ${SNAPSHOT_LOCATION}
-
 cleanup() {
   snap_list=$(${LS} ${SNAPSHOT_S3_DESTINATION} | sort | grep ${SNAPSHOT_NAME}-.*\.tgz)
   total=$(($(echo "${snap_list}" | wc -l)-1))
@@ -62,20 +64,55 @@ cleanup() {
   fi
 }
 
+is_different() {
+  previous_filename=${BACKUP_DIR}/${SNAPSHOT_NAME}-previous.tgz
+  current_filename=$1
+
+  if [ ! -e "${current_filename}" ]; then
+    log "Error: parameter missing to $0"
+    return 0
+  fi
+
+  if [ -e "${previous_filename}" ]; then
+    old_md5=$(md5sum ${previous_filename} | awk '{print $1}')
+    new_md5=$(md5sum ${current_filename} | awk '{print $1}')
+
+    log "old ${old_md5} versus new ${new_md5}"
+    if [ "$old_md5" = "$new_md5" ]; then
+      return 1
+    fi
+  fi
+
+  cp ${current_filename} ${previous_filename}
+  return 0
+}
+
 run() {
   TIMESTAMP=`date +${SNAPSHOT_TIMESTAMP_FORMAT}`
   FILENAME=${SNAPSHOT_NAME}-${TIMESTAMP}.tgz
 
   echo "Archiving ${SNAPSHOT_LOCATION} to ${FILENAME}"
-  tar zcf ${BACKUP_DIR}/${FILENAME} .
+
+  find ${SNAPSHOT_LOCATION} -maxdepth 1 -printf '%P ' | xargs tar c --directory=${SNAPSHOT_LOCATION} | gzip -n >${BACKUP_DIR}/${FILENAME}
+
+  log "Backup Contents:" $(tar tf ${BACKUP_DIR}/${FILENAME})
 
   echo "Copying ${FILENAME} to ${SNAPSHOT_S3_DESTINATION}"
 
-  ${CP} ${BACKUP_DIR}/${FILENAME} ${SNAPSHOT_S3_DESTINATION}
+  is_different ${BACKUP_DIR}/${FILENAME}
+  if [ $? -eq 0 ]; then
+    log "Snapshot different than the last one"
 
-  ${CP} ${SNAPSHOT_S3_DESTINATION}/${FILENAME} ${SNAPSHOT_S3_DESTINATION}/${SNAPSHOT_NAME}-latest.tgz
+    ${CP} ${BACKUP_DIR}/${FILENAME} ${SNAPSHOT_S3_DESTINATION}
 
-  cleanup
+    ${CP} ${SNAPSHOT_S3_DESTINATION}/${FILENAME} ${SNAPSHOT_S3_DESTINATION}/${SNAPSHOT_NAME}-latest.tgz
+
+    cleanup
+  else
+    echo "Snapshot same as the last one, skipping backup"
+  fi
+
+  rm ${BACKUP_DIR}/${FILENAME}
 }
 
 if [ ! -z "${SNAPSHOT_INTERVAL}" ]; then
