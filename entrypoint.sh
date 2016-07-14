@@ -87,6 +87,7 @@ echo "Snapshot Tool"
 echo "-------------"
 echo "SNAPSHOT_NAME=${SNAPSHOT_NAME}"
 echo "SNAPSHOT_TIMESTAMP_FORMAT=${SNAPSHOT_TIMESTAMP_FORMAT}"
+echo "SNAPSHOT_INTERVAL=${SNAPSHOT_INTERVAL}"
 echo "SNAPSHOT_MAX_NUM=${SNAPSHOT_MAX_NUM}"
 echo "SNAPSHOT_LOCATION=${SNAPSHOT_LOCATION}"
 echo "SNAPSHOT_DESTINATION=${SNAPSHOT_DESTINATION}"
@@ -169,7 +170,7 @@ run() {
 }
 
 if [ ! -z "${SNAPSHOT_INTERVAL}" ]; then
-  sleep 10
+  sleep 120
   while true 
   do
     run
