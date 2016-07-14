@@ -2,10 +2,13 @@ version: '2'
 services:
   test:
     build: .
+    volumes:
+      - "~/.aws:/root/.aws"
     environment:
       DEBUG: "true"
-      SNAPSHOT_METHOD: local
+      SNAPSHOT_METHOD: s3
       SNAPSHOT_COMPRESSION: zip
       SNAPSHOT_LOCATION: /s3
-      SNAPSHOT_S3_DESTINATION: /root
+      SNAPSHOT_S3_DESTINATION: s3://robpc-minecraft/backup
+      SNAPSHOT_MAX_NUM: 3
       SNAPSHOT_INTERVAL: 15

@@ -59,18 +59,33 @@ local_rm() {
   rm $@
 }
 
+s3_cp() {
+  aws s3 cp --quiet $@
+}
+s3_ls() {
+  aws s3 ls $@ | awk '{print $4}'
+}
+s3_rm() {
+  aws s3 rm --quiet $@
+}
+
 if [ "${SNAPSHOT_METHOD}" = "local" ]; then
   CP=local_cp
   LS=local_ls 
   RM=local_rm
   export -f local_rm
+elif [ "${SNAPSHOT_METHOD}" = "s3" ]; then
+  CP=s3_cp
+  LS=s3_ls 
+  RM=s3_rm
+  export -f s3_rm
 else
   echo "Error: Unknown SNAPSHOT_METHOD '${SNAPSHOT_METHOD}'"
   exit
 fi
 
 cleanup() {
-  snap_list=$(${LS} ${SNAPSHOT_S3_DESTINATION} | sort | grep ${SNAPSHOT_NAME}-.*\.${FILENAME_EXT})
+  snap_list=$(${LS} ${SNAPSHOT_S3_DESTINATION}/ | sort | grep ${SNAPSHOT_NAME}-.*\.${FILENAME_EXT})
   total=$(($(echo "${snap_list}" | wc -l)-1))
 
   old_snaps=$(echo "${snap_list}" | head -n -${NUM_TO_KEEP})
@@ -130,7 +145,7 @@ run() {
     log "Snapshot different than the last one"
     echo "Copying ${FILENAME} to ${SNAPSHOT_S3_DESTINATION}"
 
-    ${CP} ${BACKUP_DIR}/${FILENAME} ${SNAPSHOT_S3_DESTINATION}
+    ${CP} ${BACKUP_DIR}/${FILENAME} ${SNAPSHOT_S3_DESTINATION}/
 
     ${CP} ${SNAPSHOT_S3_DESTINATION}/${FILENAME} ${SNAPSHOT_S3_DESTINATION}/${SNAPSHOT_NAME}-latest.${FILENAME_EXT}
 
