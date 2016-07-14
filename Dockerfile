@@ -2,7 +2,7 @@ FROM debian:jessie
 
 RUN apt-get update -y && \
     apt-get install -y \
-        vim python python-pip groff
+        vim python python-pip groff zip
 
 RUN pip install awscli
 

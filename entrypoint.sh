@@ -25,10 +25,28 @@ if [ -z "${SNAPSHOT_MAX_NUM}" ]; then
 fi
 NUM_TO_KEEP=$((SNAPSHOT_MAX_NUM+1))
 
+toLower() {
+  echo "$@" | tr '[A-Z]' '[a-z]'
+}
+
+FILENAME_EXT=
+SNAPSHOT_COMPRESSION=$(toLower ${SNAPSHOT_COMPRESSION})
+if [ "${SNAPSHOT_COMPRESSION}" == "" ]; then
+  SNAPSHOT_COMPRESSION='tar'
+fi
+
+case ${SNAPSHOT_COMPRESSION} in
+  "tar") FILENAME_EXT='tgz' ;;
+  "zip") FILENAME_EXT='zip' ;;
+  *) echo "Error processing filename extension" && exit ;;
+esac
+
 BACKUP_DIR=/backups
 
+DEBUG=$(toLower ${DEBUG-FALSE})
+echo "DEBUG=${DEBUG}"
 log() {
-    echo "DEBUG:" $@ >&2
+    [[ "$DEBUG" == "true" ]] && echo "DEBUG:" $@ >&2
 }
 
 local_cp() {
@@ -52,7 +70,7 @@ else
 fi
 
 cleanup() {
-  snap_list=$(${LS} ${SNAPSHOT_S3_DESTINATION} | sort | grep ${SNAPSHOT_NAME}-.*\.tgz)
+  snap_list=$(${LS} ${SNAPSHOT_S3_DESTINATION} | sort | grep ${SNAPSHOT_NAME}-.*\.${FILENAME_EXT})
   total=$(($(echo "${snap_list}" | wc -l)-1))
 
   old_snaps=$(echo "${snap_list}" | head -n -${NUM_TO_KEEP})
@@ -65,7 +83,7 @@ cleanup() {
 }
 
 is_different() {
-  previous_filename=${BACKUP_DIR}/${SNAPSHOT_NAME}-previous.tgz
+  previous_filename=${BACKUP_DIR}/${SNAPSHOT_NAME}-previous.${FILENAME_EXT}
   current_filename=$1
 
   if [ ! -e "${current_filename}" ]; then
@@ -89,23 +107,32 @@ is_different() {
 
 run() {
   TIMESTAMP=`date +${SNAPSHOT_TIMESTAMP_FORMAT}`
-  FILENAME=${SNAPSHOT_NAME}-${TIMESTAMP}.tgz
+  FILENAME=${SNAPSHOT_NAME}-${TIMESTAMP}.${FILENAME_EXT}
 
   echo "Archiving ${SNAPSHOT_LOCATION} to ${FILENAME}"
 
-  find ${SNAPSHOT_LOCATION} -maxdepth 1 -printf '%P ' | xargs tar c --directory=${SNAPSHOT_LOCATION} | gzip -n >${BACKUP_DIR}/${FILENAME}
+  files=$(find ${SNAPSHOT_LOCATION} -maxdepth 1 -printf '%P ') 
 
-  log "Backup Contents:" $(tar tf ${BACKUP_DIR}/${FILENAME})
-
-  echo "Copying ${FILENAME} to ${SNAPSHOT_S3_DESTINATION}"
+  case ${SNAPSHOT_COMPRESSION} in
+    "tar")
+      tar c --directory=${SNAPSHOT_LOCATION} ${files} | gzip -n >${BACKUP_DIR}/${FILENAME} 
+      log "Backup Contents:" $(tar tf ${BACKUP_DIR}/${FILENAME})
+      ;;
+    "zip")
+      cd ${SNAPSHOT_LOCATION} && zip -X -q ${BACKUP_DIR}/${FILENAME} ${files} 
+      log "Backup Contents:" $(unzip -Z1 ${BACKUP_DIR}/${FILENAME})
+      ;;
+    *) echo "Error: No compression setting found, should not be here" && exit ;; 
+  esac
 
   is_different ${BACKUP_DIR}/${FILENAME}
   if [ $? -eq 0 ]; then
     log "Snapshot different than the last one"
+    echo "Copying ${FILENAME} to ${SNAPSHOT_S3_DESTINATION}"
 
     ${CP} ${BACKUP_DIR}/${FILENAME} ${SNAPSHOT_S3_DESTINATION}
 
-    ${CP} ${SNAPSHOT_S3_DESTINATION}/${FILENAME} ${SNAPSHOT_S3_DESTINATION}/${SNAPSHOT_NAME}-latest.tgz
+    ${CP} ${SNAPSHOT_S3_DESTINATION}/${FILENAME} ${SNAPSHOT_S3_DESTINATION}/${SNAPSHOT_NAME}-latest.${FILENAME_EXT}
 
     cleanup
   else
