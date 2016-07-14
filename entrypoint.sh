@@ -6,9 +6,9 @@ if [ ! -e "${SNAPSHOT_LOCATION}" ]; then
   exit
 fi
 
-if [ -z "${SNAPSHOT_S3_DESTINATION}" ]; then
-  echo "ERROR: The s3 destination '${SNAPSHOT_S3_DESTINATION}' was not set." \
-       "Please check the SNAPSHOT_S3_DESTINATION environment variable."
+if [ -z "${SNAPSHOT_DESTINATION}" ]; then
+  echo "ERROR: The s3 destination '${SNAPSHOT_DESTINATION}' was not set." \
+       "Please check the SNAPSHOT_DESTINATION environment variable."
   exit
 fi
 
@@ -29,12 +29,12 @@ toLower() {
   echo "$@" | tr '[A-Z]' '[a-z]'
 }
 
-FILENAME_EXT=
 SNAPSHOT_COMPRESSION=$(toLower ${SNAPSHOT_COMPRESSION})
 if [ "${SNAPSHOT_COMPRESSION}" == "" ]; then
   SNAPSHOT_COMPRESSION='tar'
 fi
 
+FILENAME_EXT=
 case ${SNAPSHOT_COMPRESSION} in
   "tar") FILENAME_EXT='tgz' ;;
   "zip") FILENAME_EXT='zip' ;;
@@ -44,7 +44,6 @@ esac
 BACKUP_DIR=/backups
 
 DEBUG=$(toLower ${DEBUG-FALSE})
-echo "DEBUG=${DEBUG}"
 log() {
     [[ "$DEBUG" == "true" ]] && echo "DEBUG:" $@ >&2
 }
@@ -84,8 +83,20 @@ else
   exit
 fi
 
+echo "Snapshot Tool"
+echo "-------------"
+echo "SNAPSHOT_NAME=${SNAPSHOT_NAME}"
+echo "SNAPSHOT_TIMESTAMP_FORMAT=${SNAPSHOT_TIMESTAMP_FORMAT}"
+echo "SNAPSHOT_MAX_NUM=${SNAPSHOT_MAX_NUM}"
+echo "SNAPSHOT_LOCATION=${SNAPSHOT_LOCATION}"
+echo "SNAPSHOT_DESTINATION=${SNAPSHOT_DESTINATION}"
+echo "SNAPSHOT_METHOD=${SNAPSHOT_METHOD}"
+echo "SNAPSHOT_COMPRESSION=${SNAPSHOT_COMPRESSION}"
+echo "DEBUG=${DEBUG}"
+echo
+
 cleanup() {
-  snap_list=$(${LS} ${SNAPSHOT_S3_DESTINATION}/ | sort | grep ${SNAPSHOT_NAME}-.*\.${FILENAME_EXT})
+  snap_list=$(${LS} ${SNAPSHOT_DESTINATION}/ | sort | grep ${SNAPSHOT_NAME}-.*\.${FILENAME_EXT})
   total=$(($(echo "${snap_list}" | wc -l)-1))
 
   old_snaps=$(echo "${snap_list}" | head -n -${NUM_TO_KEEP})
@@ -93,7 +104,7 @@ cleanup() {
   
   if [ ! -z "${old_snaps}" ]; then
     echo "Found ${total} snapshots, ${num_old} greater than ${SNAPSHOT_MAX_NUM} deleting" $old_snaps
-    echo "${old_snaps}" | xargs -L1 -i bash -c "${RM} ${SNAPSHOT_S3_DESTINATION}/{}" _
+    echo "${old_snaps}" | xargs -L1 -i bash -c "${RM} ${SNAPSHOT_DESTINATION}/{}" _
   fi
 }
 
@@ -143,11 +154,11 @@ run() {
   is_different ${BACKUP_DIR}/${FILENAME}
   if [ $? -eq 0 ]; then
     log "Snapshot different than the last one"
-    echo "Copying ${FILENAME} to ${SNAPSHOT_S3_DESTINATION}"
+    echo "Copying ${FILENAME} to ${SNAPSHOT_DESTINATION}"
 
-    ${CP} ${BACKUP_DIR}/${FILENAME} ${SNAPSHOT_S3_DESTINATION}/
+    ${CP} ${BACKUP_DIR}/${FILENAME} ${SNAPSHOT_DESTINATION}/
 
-    ${CP} ${SNAPSHOT_S3_DESTINATION}/${FILENAME} ${SNAPSHOT_S3_DESTINATION}/${SNAPSHOT_NAME}-latest.${FILENAME_EXT}
+    ${CP} ${SNAPSHOT_DESTINATION}/${FILENAME} ${SNAPSHOT_DESTINATION}/${SNAPSHOT_NAME}-latest.${FILENAME_EXT}
 
     cleanup
   else
