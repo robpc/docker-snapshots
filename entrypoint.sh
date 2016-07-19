@@ -146,7 +146,7 @@ run() {
       log "Backup Contents:" $(tar tf ${BACKUP_DIR}/${FILENAME})
       ;;
     "zip")
-      cd ${SNAPSHOT_LOCATION} && zip -X -q ${BACKUP_DIR}/${FILENAME} ${files} 
+      cd ${SNAPSHOT_LOCATION} && zip -Xrq ${BACKUP_DIR}/${FILENAME} ${files} 
       log "Backup Contents:" $(unzip -Z1 ${BACKUP_DIR}/${FILENAME})
       ;;
     *) echo "Error: No compression setting found, should not be here" && exit ;; 
