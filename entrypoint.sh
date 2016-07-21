@@ -33,6 +33,8 @@ toLower() {
   echo "$@" | tr '[A-Z]' '[a-z]'
 }
 
+SNAPSHOT_INCLUDE_DIR=$(toLower ${SNAPSHOT_INCLUDE_DIR-true})
+
 SNAPSHOT_COMPRESSION=$(toLower ${SNAPSHOT_COMPRESSION})
 if [ "${SNAPSHOT_COMPRESSION}" == "" ]; then
   SNAPSHOT_COMPRESSION='tar'
@@ -98,6 +100,7 @@ echo "SNAPSHOT_LOCATION=${SNAPSHOT_LOCATION}"
 echo "SNAPSHOT_DESTINATION=${SNAPSHOT_DESTINATION}"
 echo "SNAPSHOT_METHOD=${SNAPSHOT_METHOD}"
 echo "SNAPSHOT_COMPRESSION=${SNAPSHOT_COMPRESSION}"
+echo "SNAPSHOT_INCLUDE_DIR=${SNAPSHOT_INCLUDE_DIR}"
 echo "DEBUG=${DEBUG}"
 echo
 
@@ -147,15 +150,21 @@ run() {
 
   echo "Archiving ${SNAPSHOT_LOCATION} to ${FILENAME}"
 
-  files=$(find ${SNAPSHOT_LOCATION} -maxdepth 1 -printf '%P ') 
+  if [ "${SNAPSHOT_INCLUDE_DIR}" == "true" ]; then
+    working_dir=$(dirname ${SNAPSHOT_LOCATION})
+    files=$(basename ${SNAPSHOT_LOCATION})
+  else
+    working_dir=${SNAPSHOT_LOCATION}
+    files=$(find ${SNAPSHOT_LOCATION} -maxdepth 1 -printf '%P ') 
+  fi
 
   case ${SNAPSHOT_COMPRESSION} in
     "tar")
-      tar c --directory=${SNAPSHOT_LOCATION} ${files} | gzip -n >${BACKUP_DIR}/${FILENAME} 
+      tar c --directory=${working_dir} ${files} | gzip -n >${BACKUP_DIR}/${FILENAME} 
       log "Backup Contents:" $(tar tf ${BACKUP_DIR}/${FILENAME})
       ;;
     "zip")
-      cd ${SNAPSHOT_LOCATION} && zip -Xrq ${BACKUP_DIR}/${FILENAME} ${files} 
+      cd ${working_dir} && zip -Xrq ${BACKUP_DIR}/${FILENAME} ${files} 
       log "Backup Contents:" $(unzip -Z1 ${BACKUP_DIR}/${FILENAME})
       ;;
     *) echo "Error: No compression setting found, should not be here" && exit ;; 

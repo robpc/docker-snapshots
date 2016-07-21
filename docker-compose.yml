@@ -12,3 +12,5 @@ services:
       SNAPSHOT_DESTINATION: s3://robpc-minecraft/backup
       SNAPSHOT_MAX_NUM: 3
       SNAPSHOT_INTERVAL: 15
+      SNAPSHOT_INCLUDE_DIR: "FALSE"
+      SNAPSHOT_START_DELAY: 0
