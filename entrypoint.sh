@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [ ! -e "${SNAPSHOT_LOCATION}" ]; then
-  echo "ERROR: The snapshot location '${SNAPSHOT_LOCATION}' was not found." \
+if [ -z "${SNAPSHOT_LOCATION}" ]; then
+  echo "ERROR: The snapshot location '${SNAPSHOT_LOCATION}' was not set." \
        "Please check the SNAPSHOT_LOCATION environment variable."
   exit
 fi
@@ -10,6 +10,10 @@ if [ -z "${SNAPSHOT_DESTINATION}" ]; then
   echo "ERROR: The s3 destination '${SNAPSHOT_DESTINATION}' was not set." \
        "Please check the SNAPSHOT_DESTINATION environment variable."
   exit
+fi
+
+if [ -z "${SNAPSHOT_START_DELAY}" ]; then
+  SNAPSHOT_START_DELAY=120
 fi
 
 if [ -z "${SNAPSHOT_NAME}" ]; then
@@ -87,6 +91,7 @@ echo "Snapshot Tool"
 echo "-------------"
 echo "SNAPSHOT_NAME=${SNAPSHOT_NAME}"
 echo "SNAPSHOT_TIMESTAMP_FORMAT=${SNAPSHOT_TIMESTAMP_FORMAT}"
+echo "SNAPSHOT_START_DELAY=${SNAPSHOT_START_DELAY}"
 echo "SNAPSHOT_INTERVAL=${SNAPSHOT_INTERVAL}"
 echo "SNAPSHOT_MAX_NUM=${SNAPSHOT_MAX_NUM}"
 echo "SNAPSHOT_LOCATION=${SNAPSHOT_LOCATION}"
@@ -133,6 +138,10 @@ is_different() {
 }
 
 run() {
+  if [ ! -e "${SNAPSHOT_LOCATION}" ]; then
+    echo "ERROR: The snapshot location '${SNAPSHOT_LOCATION}' was not found, skipping backup."
+    return
+  fi
   TIMESTAMP=`date +${SNAPSHOT_TIMESTAMP_FORMAT}`
   FILENAME=${SNAPSHOT_NAME}-${TIMESTAMP}.${FILENAME_EXT}
 
@@ -170,7 +179,7 @@ run() {
 }
 
 if [ ! -z "${SNAPSHOT_INTERVAL}" ]; then
-  sleep 120
+  sleep ${SNAPSHOT_START_DELAY}
   while true 
   do
     run
