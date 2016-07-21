@@ -12,33 +12,22 @@ if [ -z "${SNAPSHOT_DESTINATION}" ]; then
   exit
 fi
 
-if [ -z "${SNAPSHOT_START_DELAY}" ]; then
-  SNAPSHOT_START_DELAY=120
-fi
-
-if [ -z "${SNAPSHOT_NAME}" ]; then
-  SNAPSHOT_NAME=snapshot
-fi
-
-if [ -z "${SNAPSHOT_TIMESTAMP_FORMAT}" ]; then
-  SNAPSHOT_TIMESTAMP_FORMAT=%Y%m%d-%H%M%S
-fi
-
-if [ -z "${SNAPSHOT_MAX_NUM}" ]; then
-  SNAPSHOT_MAX_NUM=5
-fi
-NUM_TO_KEEP=$((SNAPSHOT_MAX_NUM+1))
-
 toLower() {
   echo "$@" | tr '[A-Z]' '[a-z]'
 }
 
-SNAPSHOT_INCLUDE_DIR=$(toLower ${SNAPSHOT_INCLUDE_DIR-true})
+DEBUG=$(toLower ${DEBUG-FALSE})
+log() {
+    [[ "$DEBUG" == "true" ]] && echo "DEBUG:" $@ >&2
+}
 
-SNAPSHOT_COMPRESSION=$(toLower ${SNAPSHOT_COMPRESSION})
-if [ "${SNAPSHOT_COMPRESSION}" == "" ]; then
-  SNAPSHOT_COMPRESSION='tar'
-fi
+## Set Defaults for unset variables ##
+SNAPSHOT_NAME=${SNAPSHOT_NAME-snapshot}
+SNAPSHOT_TIMESTAMP_FORMAT=${SNAPSHOT_TIMESTAMP_FORMAT-"%Y%m%d-%H%M%S"}
+SNAPSHOT_MAX_NUM=${SNAPSHOT_MAX_NUM-5}
+SNAPSHOT_INCLUDE_DIR=$(toLower ${SNAPSHOT_INCLUDE_DIR-true})
+SNAPSHOT_COMPRESSION=$(toLower ${SNAPSHOT_COMPRESSION-tar})
+SNAPSHOT_START_DELAY=${SNAPSHOT_START_DELAY-120}
 
 FILENAME_EXT=
 case ${SNAPSHOT_COMPRESSION} in
@@ -47,12 +36,8 @@ case ${SNAPSHOT_COMPRESSION} in
   *) echo "Error processing filename extension" && exit ;;
 esac
 
+NUM_TO_KEEP=$((SNAPSHOT_MAX_NUM+1))
 BACKUP_DIR=/backups
-
-DEBUG=$(toLower ${DEBUG-FALSE})
-log() {
-    [[ "$DEBUG" == "true" ]] && echo "DEBUG:" $@ >&2
-}
 
 local_cp() {
   cp $@
