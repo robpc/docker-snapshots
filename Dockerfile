@@ -6,11 +6,11 @@ RUN apt-get update -y && \
 
 RUN pip install awscli
 
-RUN mkdir /s3
-RUN mkdir /backups
+RUN mkdir /home/snapshots
+RUN mkdir /home/snapshots/backups
 
-WORKDIR /backups
+WORKDIR /home/snapshots/backups
 
-COPY entrypoint.sh /s3
+COPY entrypoint.sh /home/snapshots
 
-ENTRYPOINT bash /s3/entrypoint.sh
+ENTRYPOINT bash /home/snapshots/entrypoint.sh

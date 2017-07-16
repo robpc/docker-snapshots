@@ -7,7 +7,7 @@ if [ -z "${SNAPSHOT_LOCATION}" ]; then
 fi
 
 if [ -z "${SNAPSHOT_DESTINATION}" ]; then
-  echo "ERROR: The s3 destination '${SNAPSHOT_DESTINATION}' was not set." \
+  echo "ERROR: The destination '${SNAPSHOT_DESTINATION}' was not set." \
        "Please check the SNAPSHOT_DESTINATION environment variable."
   exit
 fi
@@ -37,7 +37,7 @@ case ${SNAPSHOT_COMPRESSION} in
 esac
 
 NUM_TO_KEEP=$((SNAPSHOT_MAX_NUM+1))
-BACKUP_DIR=/backups
+BACKUP_DIR=/home/snapshots/backups
 
 local_cp() {
   cp $@
